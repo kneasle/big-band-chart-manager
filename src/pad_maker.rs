@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::chart_manager::ChartManager;
 
-#[derive(Debug, Default, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct PadMaker {
     entries: Vec<Entry>,
     set_all_part_dropdown_value: String,
@@ -253,7 +253,7 @@ impl PadMaker {
 
         // Export the PDFs
         let config = pdfcat::Config {
-            inputs: dbg!(self.pdf_paths(chart_manager)),
+            inputs: self.pdf_paths(chart_manager),
             // As of pdfcat 1.0.0-beta.9, the PDFs are collected in parallel and then concatenated
             // in whatever order the jobs finished - i.e. not the order that we gave.  I believe
             // a fix has been merged and this will be fixed in the next release, so
@@ -314,5 +314,26 @@ impl PadMaker {
         let next_id = self.id_counter;
         self.id_counter += 1;
         next_id
+    }
+}
+
+impl Default for PadMaker {
+    fn default() -> Self {
+        Self {
+            entries: vec![
+                Entry {
+                    id: 0,
+                    piece: "The Jazz Police".to_owned(),
+                    part: "Trombone 4".to_owned(),
+                },
+                Entry {
+                    id: 1,
+                    piece: "A Few Good Men".to_owned(),
+                    part: "Trombone 4".to_owned(),
+                },
+            ],
+            set_all_part_dropdown_value: "Trombone 4".to_owned(),
+            id_counter: 2,
+        }
     }
 }

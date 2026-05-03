@@ -16,7 +16,7 @@ fn main() -> eframe::Result {
     };
 
     eframe::run_native(
-        "Big Band Chart Manager",
+        "Big Band Chart-o-matic",
         options,
         Box::new(|cc| {
             // This gives us image support:
@@ -104,15 +104,15 @@ impl eframe::App for BigBandApp {
 
             // Instrument pad making
             ui.add_space(20.0);
-            ui.heading("Instrument Pads");
+            ui.heading("Make Pad");
             ui.add_space(5.0);
-            if ui.button("Open Pad Maker").clicked() {
+            if ui.button("Open Pad-o-matic").clicked() {
                 self.is_pad_maker_visible = true;
             }
         });
 
         if self.is_pad_maker_visible {
-            egui::Window::new("Pad Maker")
+            egui::Window::new("Pad-o-matic")
                 .open(&mut self.is_pad_maker_visible)
                 .scroll([true, true])
                 .default_size(Vec2::new(400.0, 300.0))
