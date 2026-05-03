@@ -1,6 +1,6 @@
 use std::{collections::HashSet, path::PathBuf};
 
-use eframe::egui;
+use eframe::egui::{self, Color32};
 use egui_autocomplete::AutoCompleteTextEdit;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
@@ -10,6 +10,7 @@ use crate::chart_manager::ChartManager;
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PadMaker {
     entries: Vec<Entry>,
+    set_all_part_dropdown_value: String,
 
     #[serde(default)]
     id_counter: u64,
@@ -74,13 +75,20 @@ impl PadMaker {
                     if ui.button("🗑").clicked() {
                         entries_to_delete.insert(item_state.index);
                     }
+
+                    // Errors
+                    if !chart_manager.has_piece(&entry.piece) {
+                        ui.colored_label(Color32::RED, "Piece doesn't exist");
+                    } else if !chart_manager.has_part(&entry.piece, &entry.part) {
+                        ui.colored_label(Color32::RED, "Part doesn't exist");
+                    }
                 });
             },
         );
 
         // New entry button
         ui.add_space(5.0);
-        if ui.button("Add Part").clicked() {
+        if ui.button("Add Entry").clicked() {
             let id = self.next_id();
             self.entries.push(Entry {
                 piece: "".to_owned(),
@@ -89,7 +97,26 @@ impl PadMaker {
             });
         }
 
-        // Delete/clone items
+        // Set all parts
+        ui.add_space(5.0);
+        ui.horizontal(|ui| {
+            ui.label("Set all parts to ");
+            egui::ComboBox::new("set-all-parts", "")
+                .selected_text(&self.set_all_part_dropdown_value)
+                .width(150.0)
+                .show_ui(ui, |ui| {
+                    let parts = self.get_parts_used_in_any_piece(chart_manager);
+                    Self::show_part_dropdown_gui(ui, &mut self.set_all_part_dropdown_value, parts);
+                });
+            if ui.button("Set").clicked() {
+                // TODO: Do this more intelligently?
+                for entry in &mut self.entries {
+                    entry.part = self.set_all_part_dropdown_value.clone();
+                }
+            }
+        });
+
+        // Handle delete/clone
         if !entries_to_clone.is_empty() || !entries_to_delete.is_empty() {
             for (idx, entry) in std::mem::take(&mut self.entries).into_iter().enumerate() {
                 if entries_to_delete.contains(&idx) {
@@ -106,6 +133,15 @@ impl PadMaker {
                 }
             }
         }
+    }
+
+    fn get_parts_used_in_any_piece(&self, chart_manager: &mut ChartManager) -> HashSet<String> {
+        let mut part_list = ChartManager::default_part_list();
+        for entry in &self.entries {
+            part_list.extend(chart_manager.get_parts_for_piece(&entry.piece));
+        }
+
+        part_list
     }
 
     fn show_part_dropdown_gui(

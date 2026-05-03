@@ -58,6 +58,10 @@ impl ChartManager {
         return self.cache.piece_list.as_ref().unwrap();
     }
 
+    pub fn has_piece(&mut self, piece: &str) -> bool {
+        self.get_piece_list().contains(piece)
+    }
+
     /// Gets a list of the valid parts for a given piece.  If the piece isn't found, then a default
     /// parts list is returned.
     pub fn get_parts_for_piece(&mut self, piece: &str) -> HashSet<String> {
@@ -66,11 +70,42 @@ impl ChartManager {
         if piece_list.contains(piece) {
             self.list_parts_for_piece(piece).keys().cloned().collect()
         } else {
-            return Self::DEFAULT_PARTS
-                .into_iter()
-                .map(|s| s.to_owned())
-                .collect();
+            Self::default_part_list()
         }
+    }
+
+    pub fn has_part(&mut self, piece: &str, part: &str) -> bool {
+        self.get_parts_for_piece(piece).contains(part)
+    }
+
+    pub fn default_part_list() -> HashSet<String> {
+        let default_parts = [
+            // Saxes
+            "Alto Sax 1",
+            "Alto Sax 2",
+            "Tenor Sax 1",
+            "Tenor Sax 2",
+            "Baritone Sax",
+            // Trumpets
+            "Trumpet 1",
+            "Trumpet 2",
+            "Trumpet 3",
+            "Trumpet 4",
+            // Trombones
+            "Trombone 1",
+            "Trombone 2",
+            "Trombone 3",
+            "Trombone 4",
+            // Vocals
+            "Vocal",
+            // Rhythm
+            "Guitar",
+            "Piano",
+            "Bass",
+            "Drums",
+        ];
+
+        default_parts.into_iter().map(|s| s.to_owned()).collect()
     }
 
     pub fn get_path_of_part(&mut self, piece: &str, part: &str) -> Option<PathBuf> {
@@ -148,30 +183,4 @@ impl ChartManager {
         }
         piece_list
     }
-
-    pub const DEFAULT_PARTS: [&'static str; 18] = [
-        // Saxes
-        "Alto Sax 1",
-        "Alto Sax 2",
-        "Tenor Sax 1",
-        "Tenor Sax 2",
-        "Baritone Sax",
-        // Trumpets
-        "Trumpet 1",
-        "Trumpet 2",
-        "Trumpet 3",
-        "Trumpet 4",
-        // Trombones
-        "Trombone 1",
-        "Trombone 2",
-        "Trombone 3",
-        "Trombone 4",
-        // Vocals
-        "Vocal",
-        // Rhythm
-        "Guitar",
-        "Piano",
-        "Bass",
-        "Drums",
-    ];
 }
