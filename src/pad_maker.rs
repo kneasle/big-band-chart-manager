@@ -4,6 +4,8 @@ use eframe::egui;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
+use crate::chart_manager::ChartManager;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PadMaker {
     entries: Vec<Entry>,
@@ -32,24 +34,13 @@ impl PadMaker {
         }
     }
 
-    pub fn show(&mut self, ui: &mut egui::Ui) {
-        self.show_entries_gui(ui);
+    pub fn show(&mut self, ui: &mut egui::Ui, chart_manager: &mut ChartManager) {
+        self.show_entries_gui(ui, chart_manager);
         ui.add_space(30.0);
         self.show_export_gui(ui);
     }
 
-    fn show_entries_gui(&mut self, ui: &mut egui::Ui) {
-        let parts = [
-            "Trumpet 1",
-            "Trumpet 2",
-            "Trumpet 3",
-            "Trumpet 4",
-            "Trombone 1",
-            "Trombone 2",
-            "Trombone 3",
-            "Trombone 4",
-        ];
-
+    fn show_entries_gui(&mut self, ui: &mut egui::Ui, chart_manager: &mut ChartManager) {
         ui.heading("Select Parts:");
 
         let mut entries_to_clone = HashSet::<usize>::new();
@@ -66,14 +57,18 @@ impl PadMaker {
                     });
 
                     // TODO: Index of piece within the set
+
+                    // Piece selection
                     egui::TextEdit::singleline(&mut entry.piece)
                         .desired_width(300.0)
                         .show(ui);
+
+                    // Part selection
                     egui::ComboBox::new(entry as *const _, "")
                         .selected_text(&entry.part)
                         .width(150.0)
                         .show_ui(ui, |ui| {
-                            for part in parts {
+                            for part in chart_manager.get_parts_for_piece(&entry.piece) {
                                 ui.selectable_value(&mut entry.part, part.to_owned(), part);
                             }
                         });
@@ -91,7 +86,7 @@ impl PadMaker {
 
         // New entry button
         ui.add_space(5.0);
-        if ui.button("Add New Part").clicked() {
+        if ui.button("Add Part").clicked() {
             self.entries.push(Entry {
                 piece: "".to_owned(),
                 part: self.get_most_common_part().to_owned(),
@@ -117,7 +112,7 @@ impl PadMaker {
 
     fn show_export_gui(&mut self, ui: &mut egui::Ui) {
         ui.heading("Export");
-        if ui.button("Export to Single PDF").clicked() {
+        if ui.button("TODO: Export to Single PDF").clicked() {
             println!("TODO: Export to PDF");
         }
         if ui.button("TODO: Export to Multiple PDFs").clicked() {

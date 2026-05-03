@@ -1,12 +1,13 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
+mod chart_manager;
 mod pad_maker;
 
 use eframe::egui::{self, Vec2};
 use egui_path_picker::{DefaultIconProvider, PathPicker};
 use serde::{Deserialize, Serialize};
 
-use crate::pad_maker::PadMaker;
+use crate::{chart_manager::ChartManager, pad_maker::PadMaker};
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -37,25 +38,21 @@ const STORAGE_KEY: &'static str = "big-band-app";
 
 #[derive(Serialize, Deserialize, Debug)]
 struct BigBandApp {
-    config: Config,
+    #[serde(default)]
+    chart_manager: ChartManager,
+
+    #[serde(default)]
+    playlists_dir: String,
 
     // Active windows
     pad_maker: Option<PadMaker>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct Config {
-    charts_dir: String,
-    playlists_dir: String,
-}
-
 impl Default for BigBandApp {
     fn default() -> Self {
         Self {
-            config: Config {
-                charts_dir: "/mnt/d/Music/Swing band/Current Music Library/".to_owned(),
-                playlists_dir: "/".to_owned(),
-            },
+            chart_manager: ChartManager::default(),
+            playlists_dir: "/".to_owned(),
 
             pad_maker: None,
         }
@@ -75,16 +72,18 @@ impl eframe::App for BigBandApp {
             egui::Grid::new("config-table").show(ui, |ui| {
                 // TODO: Use rfd for this
                 ui.label("Charts folder:");
+                let mut charts_path = self.chart_manager.get_path().to_owned();
                 ui.add(PathPicker::<_, DefaultIconProvider>::new(
-                    &mut self.config.charts_dir,
+                    &mut charts_path,
                     &"/mnt/d/Music/Swing band/Current Music Library/",
                 ));
+                self.chart_manager.update_path(charts_path);
                 ui.end_row();
 
                 ui.label("Playlists folder:");
                 ui.add(PathPicker::<_, DefaultIconProvider>::new(
-                    &mut self.config.playlists_dir,
-                    &"~",
+                    &mut self.playlists_dir,
+                    &"/",
                 ));
                 ui.end_row();
             });
@@ -95,14 +94,15 @@ impl eframe::App for BigBandApp {
             ui.add_space(5.0);
             ui.horizontal(|ui| {
                 ui.label("Import New Chart:");
-                if ui.button("From Combined PDF").clicked() {
+                if ui.button("TODO: From Combined PDF").clicked() {
                     println!("TODO: Implement chart import");
                 }
-                if ui.button("From Folder of PDFs").clicked() {
+                if ui.button("TODO: From Folder of PDFs").clicked() {
                     println!("TODO: Implement chart import");
                 }
             });
             if ui.button("Make Instrument Pad").clicked() {
+                // TODO: Persist pad maker even when its window is closed
                 if self.pad_maker.is_none() {
                     self.pad_maker = Some(PadMaker::new());
                 }
@@ -115,7 +115,7 @@ impl eframe::App for BigBandApp {
                 .open(&mut is_open)
                 .scroll([true, true])
                 .default_size(Vec2::new(400.0, 300.0))
-                .show(ctx, |ui| pad_maker.show(ui));
+                .show(ctx, |ui| pad_maker.show(ui, &mut self.chart_manager));
 
             // Close the pad maker if user hits the 'x' button
             if !is_open {
