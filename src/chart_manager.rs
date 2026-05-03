@@ -20,7 +20,7 @@ pub struct ChartManager {
 struct Cache {
     piece_list: Option<HashSet<String>>,
 
-    // Map of piece names to a list of parts which they support
+    // Map of piece names to a map of part names to the path of that PDF
     parts_per_piece: HashMap<String, HashMap<String, PathBuf>>,
 }
 
@@ -96,13 +96,14 @@ impl ChartManager {
             "Trombone 2",
             "Trombone 3",
             "Trombone 4",
-            // Vocals
-            "Vocal",
             // Rhythm
             "Guitar",
             "Piano",
             "Bass",
             "Drums",
+            // Other
+            "Vocal",
+            "Conductor",
         ];
 
         default_parts.into_iter().map(|s| s.to_owned()).collect()

@@ -31,6 +31,14 @@ impl PadMaker {
         self.show_export_gui(ui, chart_manager);
     }
 
+    pub fn set_setlist(&mut self, pieces: &[String], part: &str) {
+        self.entries.clear();
+        for piece in pieces {
+            let entry = self.new_entry(piece, part);
+            self.entries.push(entry);
+        }
+    }
+
     // ENTRIES LIST -------------------------------------------------------------------------------
 
     fn show_entries_gui(&mut self, ui: &mut egui::Ui, chart_manager: &mut ChartManager) {
@@ -56,16 +64,17 @@ impl PadMaker {
                     ui.add(
                         AutoCompleteTextEdit::new(&mut entry.piece, piece_list)
                             .width(300.0)
+                            .popup_on_focus(true)
                             .max_suggestions(10),
                     );
 
                     // Part selection
                     egui::ComboBox::new(entry.id, "")
                         .selected_text(&entry.part)
-                        .width(150.0)
+                        .width(100.0)
                         .show_ui(ui, |ui| {
                             let parts = chart_manager.get_parts_for_piece(&entry.piece);
-                            Self::show_part_dropdown_gui(ui, &mut entry.part, parts);
+                            crate::utils::show_part_dropdown_gui(ui, &mut entry.part, parts);
                         });
 
                     // Clone and delete buttons
@@ -89,12 +98,8 @@ impl PadMaker {
         // New entry button
         ui.add_space(5.0);
         if ui.button("Add Entry").clicked() {
-            let id = self.next_id();
-            self.entries.push(Entry {
-                piece: "".to_owned(),
-                part: self.get_most_common_part().to_owned(),
-                id,
-            });
+            let entry = self.new_entry("", self.get_most_common_part().to_owned());
+            self.entries.push(entry);
         }
 
         // Set all parts
@@ -106,7 +111,11 @@ impl PadMaker {
                 .width(150.0)
                 .show_ui(ui, |ui| {
                     let parts = self.get_parts_used_in_any_piece(chart_manager);
-                    Self::show_part_dropdown_gui(ui, &mut self.set_all_part_dropdown_value, parts);
+                    crate::utils::show_part_dropdown_gui(
+                        ui,
+                        &mut self.set_all_part_dropdown_value,
+                        parts,
+                    );
                 });
             if ui.button("Set").clicked() {
                 // TODO: Do this more intelligently?
@@ -123,8 +132,7 @@ impl PadMaker {
                     // Don't re-add this as it's been deleted
                 } else if entries_to_clone.contains(&idx) {
                     // Add this entry twice, as it's been cloned
-                    let mut duplicate_entry = entry.clone();
-                    duplicate_entry.id = self.next_id();
+                    let duplicate_entry = self.new_entry(&entry.piece, &entry.part);
                     self.entries.push(duplicate_entry);
                     self.entries.push(entry);
                 } else {
@@ -142,79 +150,6 @@ impl PadMaker {
         }
 
         part_list
-    }
-
-    fn show_part_dropdown_gui(
-        ui: &mut egui::Ui,
-        part_var: &mut String,
-        mut parts: HashSet<String>,
-    ) {
-        let sections = vec![
-            (
-                "Saxes",
-                vec![
-                    "Alto Sax 1",
-                    "Alto Sax 2",
-                    "Tenor Sax 1",
-                    "Tenor Sax 2",
-                    "Baritone Sax",
-                ],
-            ),
-            (
-                "Trumpets",
-                vec![
-                    "Trumpet 1",
-                    "Trumpet 2",
-                    "Trumpet 3",
-                    "Trumpet 4",
-                    "Trumpet 5",
-                ],
-            ),
-            (
-                "Trombones",
-                vec![
-                    "Trombone 1",
-                    "Trombone 2",
-                    "Trombone 3",
-                    "Trombone 4",
-                    "Trombone 5",
-                ],
-            ),
-            ("Rhythm", vec!["Guitar", "Piano", "Bass", "Drums"]),
-        ];
-
-        let mut is_first_heading = true;
-        let mut add_heading = |ui: &mut egui::Ui, heading: &str| {
-            if !is_first_heading {
-                ui.add_space(10.0);
-            }
-            is_first_heading = false;
-
-            ui.label(heading);
-        };
-
-        // Add parts for which we have heandings
-        for (heading, parts_under_heading) in sections {
-            // Find which parts we actually have, removing them from the list
-            let parts_to_list = parts_under_heading
-                .into_iter()
-                .filter(|p| parts.remove(*p))
-                .collect_vec();
-            if !parts_to_list.is_empty() {
-                add_heading(ui, heading);
-                for p in parts_to_list {
-                    ui.selectable_value(part_var, p.to_owned(), format!("  {}", p));
-                }
-            }
-        }
-
-        // Any other parts go into "Other"
-        if !parts.is_empty() {
-            add_heading(ui, "Other");
-            for p in parts.iter().sorted() {
-                ui.selectable_value(part_var, p.to_owned(), format!("  {}", p));
-            }
-        }
     }
 
     /// Get the part name most commonly used in this pad.
@@ -310,10 +245,14 @@ impl PadMaker {
 
     // UTILS --------------------------------------------------------------------------------------
 
-    fn next_id(&mut self) -> u64 {
-        let next_id = self.id_counter;
+    fn new_entry(&mut self, piece: impl Into<String>, part: impl Into<String>) -> Entry {
+        let id = self.id_counter;
         self.id_counter += 1;
-        next_id
+        Entry {
+            id,
+            piece: piece.into(),
+            part: part.into(),
+        }
     }
 }
 

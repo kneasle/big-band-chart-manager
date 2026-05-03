@@ -2,12 +2,16 @@
 
 mod chart_manager;
 mod pad_maker;
+mod playlist_manager;
+mod utils;
 
-use eframe::egui::{self, Vec2};
+use eframe::egui::{self, Color32, Vec2};
+use egui_autocomplete::AutoCompleteTextEdit;
 use egui_path_picker::{DefaultIconProvider, PathPicker};
+use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
-use crate::{chart_manager::ChartManager, pad_maker::PadMaker};
+use crate::{chart_manager::ChartManager, pad_maker::PadMaker, playlist_manager::PlaylistManager};
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -36,30 +40,24 @@ fn main() -> eframe::Result {
 
 const STORAGE_KEY: &'static str = "big-band-app";
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 struct BigBandApp {
+    // Data under the 'Config' label
     #[serde(default)]
     chart_manager: ChartManager,
-
     #[serde(default)]
-    playlists_dir: String,
+    playlist_manager: PlaylistManager,
+
+    // Other GUI elements
+    #[serde(default)]
+    pad_maker_gui_playlist: String,
+    #[serde(default)]
+    pad_maker_gui_part: String,
 
     // Active windows
     #[serde(default)]
     is_pad_maker_visible: bool,
     pad_maker: PadMaker,
-}
-
-impl Default for BigBandApp {
-    fn default() -> Self {
-        Self {
-            chart_manager: ChartManager::default(),
-            playlists_dir: "/".to_owned(),
-
-            is_pad_maker_visible: false,
-            pad_maker: PadMaker::default(),
-        }
-    }
 }
 
 impl eframe::App for BigBandApp {
@@ -78,20 +76,22 @@ impl eframe::App for BigBandApp {
                 let mut charts_path = self.chart_manager.get_path().to_owned();
                 ui.add(PathPicker::<_, DefaultIconProvider>::new(
                     &mut charts_path,
-                    &"/mnt/d/Music/Swing band/Current Music Library/",
+                    &"/mnt/d/Music/Swing band/Current Music Library",
                 ));
                 self.chart_manager.update_path(charts_path);
                 ui.end_row();
 
                 ui.label("Playlists folder:");
+                let mut playlists_path = self.playlist_manager.get_path().to_owned();
                 ui.add(PathPicker::<_, DefaultIconProvider>::new(
-                    &mut self.playlists_dir,
-                    &"/",
+                    &mut playlists_path,
+                    &"/mnt/d/Music/Swing band/Playlists",
                 ));
+                self.playlist_manager.update_path(playlists_path);
                 ui.end_row();
             });
 
-            // Actions
+            // Imports
             ui.add_space(20.0);
             ui.heading("Import New Chart");
             ui.add_space(5.0);
@@ -109,6 +109,48 @@ impl eframe::App for BigBandApp {
             if ui.button("Open Pad-o-matic").clicked() {
                 self.is_pad_maker_visible = true;
             }
+            ui.horizontal(|ui| {
+                ui.label("Make pad for playlist:");
+                let playlists = self
+                    .playlist_manager
+                    .get_playlists()
+                    .iter()
+                    .filter_map(|p| p.get_name())
+                    .collect_vec();
+                ui.add(
+                    AutoCompleteTextEdit::new(&mut self.pad_maker_gui_playlist, playlists)
+                        .width(300.0)
+                        .popup_on_focus(true)
+                        .max_suggestions(10),
+                );
+                egui::ComboBox::new("pad-maker-part", "")
+                    .selected_text(&self.pad_maker_gui_part)
+                    .width(100.0)
+                    .show_ui(ui, |ui| {
+                        let parts = ChartManager::default_part_list();
+                        crate::utils::show_part_dropdown_gui(
+                            ui,
+                            &mut self.pad_maker_gui_part,
+                            parts,
+                        );
+                    });
+                match self
+                    .playlist_manager
+                    .get_playlist_by_name(&self.pad_maker_gui_playlist)
+                {
+                    Some(playlist) => {
+                        if ui.button("Go!").clicked() {
+                            let setlist = playlist.read_setlist();
+                            self.pad_maker
+                                .set_setlist(&setlist, &self.pad_maker_gui_part);
+                            self.is_pad_maker_visible = true;
+                        }
+                    }
+                    None => {
+                        ui.colored_label(Color32::RED, "Playlist doesn't exist");
+                    }
+                }
+            });
         });
 
         if self.is_pad_maker_visible {
