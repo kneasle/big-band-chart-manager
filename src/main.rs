@@ -1,8 +1,12 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")] // hide console window on Windows in release
 
-use eframe::egui;
+mod pad_maker;
+
+use eframe::egui::{self, Vec2};
 use egui_path_picker::{DefaultIconProvider, PathPicker};
 use serde::{Deserialize, Serialize};
+
+use crate::pad_maker::PadMaker;
 
 fn main() -> eframe::Result {
     let options = eframe::NativeOptions {
@@ -20,8 +24,8 @@ fn main() -> eframe::Result {
             // Read app
             let mut app = Box::<BigBandApp>::default();
             if let Some(storage) = cc.storage {
-                if let Some(config_str) = storage.get_string(STORAGE_KEY_CONFIG) {
-                    app.config = serde_json::from_str(&config_str).unwrap();
+                if let Some(config_str) = storage.get_string(STORAGE_KEY) {
+                    app = serde_json::from_str(&config_str).unwrap();
                 }
             }
             Ok(app)
@@ -29,11 +33,14 @@ fn main() -> eframe::Result {
     )
 }
 
-const STORAGE_KEY_CONFIG: &'static str = "big-band-app-config";
+const STORAGE_KEY: &'static str = "big-band-app";
 
-#[derive(Debug)]
+#[derive(Serialize, Deserialize, Debug)]
 struct BigBandApp {
     config: Config,
+
+    // Active windows
+    pad_maker: Option<PadMaker>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -47,18 +54,17 @@ impl Default for BigBandApp {
         Self {
             config: Config {
                 charts_dir: "/mnt/d/Music/Swing band/Current Music Library/".to_owned(),
-                playlists_dir: "~".to_owned(),
+                playlists_dir: "/".to_owned(),
             },
+
+            pad_maker: None,
         }
     }
 }
 
 impl eframe::App for BigBandApp {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        storage.set_string(
-            STORAGE_KEY_CONFIG,
-            serde_json::to_string(&self.config).unwrap(),
-        );
+        storage.set_string(STORAGE_KEY, serde_json::to_string(self).unwrap());
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
@@ -87,12 +93,34 @@ impl eframe::App for BigBandApp {
             ui.add_space(20.0);
             ui.heading("Actions");
             ui.add_space(5.0);
-            if ui.button("Add New Chart").clicked() {
-                println!("TODO: Implement chart import");
-            }
-            if ui.button("Make Pad").clicked() {
-                println!("TODO: Implement pad maker");
+            ui.horizontal(|ui| {
+                ui.label("Import New Chart:");
+                if ui.button("From Combined PDF").clicked() {
+                    println!("TODO: Implement chart import");
+                }
+                if ui.button("From Folder of PDFs").clicked() {
+                    println!("TODO: Implement chart import");
+                }
+            });
+            if ui.button("Make Instrument Pad").clicked() {
+                if self.pad_maker.is_none() {
+                    self.pad_maker = Some(PadMaker::new());
+                }
             }
         });
+
+        if let Some(pad_maker) = &mut self.pad_maker {
+            let mut is_open = true;
+            egui::Window::new("Pad Maker")
+                .open(&mut is_open)
+                .scroll([true, true])
+                .default_size(Vec2::new(400.0, 300.0))
+                .show(ctx, |ui| pad_maker.show(ui));
+
+            // Close the pad maker if user hits the 'x' button
+            if !is_open {
+                self.pad_maker = None;
+            }
+        }
     }
 }
