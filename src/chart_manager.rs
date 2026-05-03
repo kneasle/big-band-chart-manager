@@ -60,14 +60,11 @@ impl ChartManager {
 
     /// Gets a list of the valid parts for a given piece.  If the piece isn't found, then a default
     /// parts list is returned.
-    pub fn get_parts_for_piece(&mut self, piece_name: &str) -> HashSet<String> {
+    pub fn get_parts_for_piece(&mut self, piece: &str) -> HashSet<String> {
         let piece_list = self.get_piece_list();
 
-        if piece_list.contains(piece_name) {
-            self.list_parts_for_piece(piece_name)
-                .keys()
-                .cloned()
-                .collect()
+        if piece_list.contains(piece) {
+            self.list_parts_for_piece(piece).keys().cloned().collect()
         } else {
             return Self::DEFAULT_PARTS
                 .into_iter()
@@ -76,16 +73,21 @@ impl ChartManager {
         }
     }
 
-    fn list_parts_for_piece(&mut self, piece_name: &str) -> &HashMap<String, PathBuf> {
+    pub fn get_path_of_part(&mut self, piece: &str, part: &str) -> Option<PathBuf> {
+        let parts = self.list_parts_for_piece(piece);
+        parts.get(part).cloned()
+    }
+
+    fn list_parts_for_piece(&mut self, piece: &str) -> &HashMap<String, PathBuf> {
         // Add part list to the cache if needed
-        if !self.cache.parts_per_piece.contains_key(piece_name) {
-            let part_list = self.read_part_list_from_disk(piece_name);
+        if !self.cache.parts_per_piece.contains_key(piece) {
+            let part_list = self.read_part_list_from_disk(piece);
             self.cache
                 .parts_per_piece
-                .insert(piece_name.to_owned(), part_list);
+                .insert(piece.to_owned(), part_list);
         }
         // Get it from the cache, which is now guaranteed to exist
-        let part_map = &self.cache.parts_per_piece[piece_name];
+        let part_map = &self.cache.parts_per_piece[piece];
         part_map
     }
 
