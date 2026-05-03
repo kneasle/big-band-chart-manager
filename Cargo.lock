@@ -423,6 +423,7 @@ name = "big-band-mgr-jj"
 version = "0.0.0"
 dependencies = [
  "eframe",
+ "egui_autocomplete",
  "egui_dnd",
  "egui_extras",
  "egui_path_picker",
@@ -917,6 +918,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "egui_autocomplete"
+version = "11.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dcea161c2670ce7bdf5ff18dec2ba7af4c71bde7591364ca5ff602cd795fbae"
+dependencies = [
+ "egui",
+ "fuzzy-matcher",
+ "serde",
+]
+
+[[package]]
 name = "egui_dnd"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1244,6 +1256,15 @@ dependencies = [
  "futures-task",
  "pin-project-lite",
  "slab",
+]
+
+[[package]]
+name = "fuzzy-matcher"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "54614a3312934d066701a80f20f15fa3b56d67ac7722b39eea5b4c9dd1d66c94"
+dependencies = [
+ "thread_local",
 ]
 
 [[package]]
@@ -3082,6 +3103,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "thread_local"
+version = "1.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f60246a4944f24f6e018aa17cdeffb7818b76356965d03b07d6a9886e8962185"
+dependencies = [
+ "cfg-if",
 ]
 
 [[package]]

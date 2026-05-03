@@ -1,9 +1,9 @@
 use std::{
     collections::{HashMap, HashSet},
     fs::DirEntry,
+    path::PathBuf,
 };
 
-use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
 /// Data structure providing an abstract access to a big band parts folder.
@@ -21,7 +21,7 @@ struct Cache {
     piece_list: Option<HashSet<String>>,
 
     // Map of piece names to a list of parts which they support
-    parts_per_piece: HashMap<String, HashSet<String>>,
+    parts_per_piece: HashMap<String, HashMap<String, PathBuf>>,
 }
 
 impl Default for ChartManager {
@@ -49,32 +49,7 @@ impl ChartManager {
         self.cache = Cache::default();
     }
 
-    /// Gets a list of the valid parts for a given piece.  If the piece isn't found, then a default
-    /// parts list is returned.
-    //
-    // TODO: Find a way to not clone the output
-    pub fn get_parts_for_piece(&mut self, piece_name: &str) -> HashSet<String> {
-        let piece_list = self.get_piece_list();
-
-        if piece_list.contains(piece_name) {
-            // Add part list to the cache if needed
-            if !self.cache.parts_per_piece.contains_key(piece_name) {
-                let part_list = self.read_part_list_from_disk(piece_name);
-                self.cache
-                    .parts_per_piece
-                    .insert(piece_name.to_owned(), part_list);
-            }
-            // Get it from the cache, which is not guaranteed to exist
-            self.cache.parts_per_piece[piece_name].clone()
-        } else {
-            return Self::DEFAULT_PARTS
-                .into_iter()
-                .map(|s| s.to_owned())
-                .collect();
-        }
-    }
-
-    fn get_piece_list(&mut self) -> &HashSet<String> {
+    pub fn get_piece_list(&mut self) -> &HashSet<String> {
         // Update cache if not filled yet
         if self.cache.piece_list.is_none() {
             self.cache.piece_list = Some(self.read_piece_list_from_dir());
@@ -83,14 +58,45 @@ impl ChartManager {
         return self.cache.piece_list.as_ref().unwrap();
     }
 
-    fn read_part_list_from_disk(&mut self, piece_name: &str) -> HashSet<String> {
+    /// Gets a list of the valid parts for a given piece.  If the piece isn't found, then a default
+    /// parts list is returned.
+    pub fn get_parts_for_piece(&mut self, piece_name: &str) -> HashSet<String> {
+        let piece_list = self.get_piece_list();
+
+        if piece_list.contains(piece_name) {
+            self.list_parts_for_piece(piece_name)
+                .keys()
+                .cloned()
+                .collect()
+        } else {
+            return Self::DEFAULT_PARTS
+                .into_iter()
+                .map(|s| s.to_owned())
+                .collect();
+        }
+    }
+
+    fn list_parts_for_piece(&mut self, piece_name: &str) -> &HashMap<String, PathBuf> {
+        // Add part list to the cache if needed
+        if !self.cache.parts_per_piece.contains_key(piece_name) {
+            let part_list = self.read_part_list_from_disk(piece_name);
+            self.cache
+                .parts_per_piece
+                .insert(piece_name.to_owned(), part_list);
+        }
+        // Get it from the cache, which is now guaranteed to exist
+        let part_map = &self.cache.parts_per_piece[piece_name];
+        part_map
+    }
+
+    fn read_part_list_from_disk(&mut self, piece_name: &str) -> HashMap<String, PathBuf> {
         let piece_dir = format!("{}/{}", self.path, piece_name);
 
-        let mut part_list = HashSet::<String>::new();
+        let mut part_list = HashMap::<String, PathBuf>::new();
         if let Ok(dir_iter) = std::fs::read_dir(piece_dir) {
             for entry in dir_iter {
-                if let Some(part) = Self::extract_part_from_dir_entry(piece_name, &entry) {
-                    part_list.insert(part);
+                if let Some((part, path)) = Self::extract_part_from_dir_entry(piece_name, &entry) {
+                    part_list.insert(part, path);
                 }
             }
         }
@@ -100,7 +106,7 @@ impl ChartManager {
     fn extract_part_from_dir_entry(
         piece_name: &str,
         dir_entry: &std::io::Result<DirEntry>,
-    ) -> Option<String> {
+    ) -> Option<(String, PathBuf)> {
         // Read the required stuff from the filesystem
         let entry = dir_entry.as_ref().ok()?;
         if !entry.metadata().ok()?.is_file() {
@@ -115,9 +121,9 @@ impl ChartManager {
         // Split the file stem into two parts and detect which one of them is the part
         let (part_a, part_b) = file_stem.split_once(" - ")?;
         if part_a == piece_name {
-            Some(part_b.to_owned())
+            Some((part_b.to_owned(), path))
         } else if part_b == piece_name {
-            Some(part_a.to_owned())
+            Some((part_a.to_owned(), path))
         } else {
             None
         }
