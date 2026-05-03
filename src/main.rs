@@ -45,7 +45,9 @@ struct BigBandApp {
     playlists_dir: String,
 
     // Active windows
-    pad_maker: Option<PadMaker>,
+    #[serde(default)]
+    is_pad_maker_visible: bool,
+    pad_maker: PadMaker,
 }
 
 impl Default for BigBandApp {
@@ -54,7 +56,8 @@ impl Default for BigBandApp {
             chart_manager: ChartManager::default(),
             playlists_dir: "/".to_owned(),
 
-            pad_maker: None,
+            is_pad_maker_visible: false,
+            pad_maker: PadMaker::default(),
         }
     }
 }
@@ -90,37 +93,30 @@ impl eframe::App for BigBandApp {
 
             // Actions
             ui.add_space(20.0);
-            ui.heading("Actions");
+            ui.heading("Import New Chart");
             ui.add_space(5.0);
-            ui.horizontal(|ui| {
-                ui.label("Import New Chart:");
-                if ui.button("TODO: From Combined PDF").clicked() {
-                    println!("TODO: Implement chart import");
-                }
-                if ui.button("TODO: From Folder of PDFs").clicked() {
-                    println!("TODO: Implement chart import");
-                }
-            });
-            if ui.button("Make Instrument Pad").clicked() {
-                // TODO: Persist pad maker even when its window is closed
-                if self.pad_maker.is_none() {
-                    self.pad_maker = Some(PadMaker::new());
-                }
+            if ui.button("TODO: From Combined PDF").clicked() {
+                println!("TODO: Implement chart import");
+            }
+            if ui.button("TODO: From Folder of PDFs").clicked() {
+                println!("TODO: Implement chart import");
+            }
+
+            // Instrument pad making
+            ui.add_space(20.0);
+            ui.heading("Instrument Pads");
+            ui.add_space(5.0);
+            if ui.button("Open Pad Maker").clicked() {
+                self.is_pad_maker_visible = true;
             }
         });
 
-        if let Some(pad_maker) = &mut self.pad_maker {
-            let mut is_open = true;
+        if self.is_pad_maker_visible {
             egui::Window::new("Pad Maker")
-                .open(&mut is_open)
+                .open(&mut self.is_pad_maker_visible)
                 .scroll([true, true])
                 .default_size(Vec2::new(400.0, 300.0))
-                .show(ctx, |ui| pad_maker.show(ui, &mut self.chart_manager));
-
-            // Close the pad maker if user hits the 'x' button
-            if !is_open {
-                self.pad_maker = None;
-            }
+                .show(ctx, |ui| self.pad_maker.show(ui, &mut self.chart_manager));
         }
     }
 }

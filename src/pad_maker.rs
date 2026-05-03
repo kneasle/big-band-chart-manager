@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::chart_manager::ChartManager;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 pub struct PadMaker {
     entries: Vec<Entry>,
 
@@ -24,25 +24,6 @@ struct Entry {
 }
 
 impl PadMaker {
-    pub fn new() -> Self {
-        Self {
-            entries: vec![
-                Entry {
-                    id: 0,
-                    piece: "In the Mood".to_owned(),
-                    part: "Trombone 3".to_owned(),
-                },
-                Entry {
-                    id: 1,
-                    piece: "A Few Good Men".to_owned(),
-                    part: "Trombone 3".to_owned(),
-                },
-            ],
-
-            id_counter: 2,
-        }
-    }
-
     pub fn show(&mut self, ui: &mut egui::Ui, chart_manager: &mut ChartManager) {
         self.show_entries_gui(ui, chart_manager);
         ui.add_space(30.0);
