@@ -1,0 +1,9 @@
+[package]
+name = "big-band-mgr-jj"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+eframe = { version = "0.33.3", features = ["persistence"] }
+egui_extras = { version = "0.33.3", features = ["image", "default"] }

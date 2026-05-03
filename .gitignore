@@ -1,3 +1,8 @@
 .venv/
 Input/
 Separated Charts/
+
+
+# Added by cargo
+
+/target
