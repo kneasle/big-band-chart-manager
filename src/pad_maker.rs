@@ -1,6 +1,7 @@
 use std::collections::HashSet;
 
 use eframe::egui;
+use egui_autocomplete::AutoCompleteTextEdit;
 use itertools::Itertools;
 use serde::{Deserialize, Serialize};
 
@@ -59,9 +60,12 @@ impl PadMaker {
                     // TODO: Index of piece within the set
 
                     // Piece selection
-                    egui::TextEdit::singleline(&mut entry.piece)
-                        .desired_width(300.0)
-                        .show(ui);
+                    let piece_list = chart_manager.get_piece_list();
+                    ui.add(
+                        AutoCompleteTextEdit::new(&mut entry.piece, piece_list)
+                            .width(300.0)
+                            .max_suggestions(10),
+                    );
 
                     // Part selection
                     egui::ComboBox::new(entry as *const _, "")
@@ -145,11 +149,7 @@ impl PadMaker {
                     "Trombone 5",
                 ],
             ),
-            ("Soloist", vec!["Vocal"]),
-            (
-                "Rhythm",
-                vec!["Guitar", "Piano", "Bass", "Drums", "Aux Percussion"],
-            ),
+            ("Rhythm", vec!["Guitar", "Piano", "Bass", "Drums"]),
         ];
 
         let mut is_first_heading = true;
