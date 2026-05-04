@@ -26,6 +26,9 @@ fn main() -> eframe::Result {
             // This gives us image support:
             egui_extras::install_image_loaders(&cc.egui_ctx);
 
+            // Theming
+            catppuccin_egui::set_theme(&cc.egui_ctx, catppuccin_egui::LATTE);
+
             // Read app
             let mut app = Box::<BigBandApp>::default();
             if let Some(storage) = cc.storage {
@@ -43,19 +46,14 @@ const STORAGE_KEY: &'static str = "big-band-app";
 #[derive(Serialize, Deserialize, Debug, Default)]
 struct BigBandApp {
     // Data under the 'Config' label
-    #[serde(default)]
     chart_manager: ChartManager,
-    #[serde(default)]
     playlist_manager: PlaylistManager,
 
     // Other GUI elements
-    #[serde(default)]
     pad_maker_gui_playlist: String,
-    #[serde(default)]
     pad_maker_gui_part: String,
 
     // Active windows
-    #[serde(default)]
     is_pad_maker_visible: bool,
     pad_maker: PadMaker,
 }
@@ -66,6 +64,8 @@ impl eframe::App for BigBandApp {
     }
 
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        ctx.set_zoom_factor(1.5);
+
         egui::CentralPanel::default().show(ctx, |ui| {
             // Configuration
             ui.heading("Configuration");

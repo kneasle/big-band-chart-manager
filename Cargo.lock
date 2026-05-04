@@ -442,6 +442,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "big_band_chart_manager"
 version = "0.0.0"
 dependencies = [
+ "catppuccin-egui",
  "docx-rust",
  "eframe",
  "egui_autocomplete",
@@ -635,6 +636,15 @@ dependencies = [
  "rustix 1.1.4",
  "wayland-backend",
  "wayland-client",
+]
+
+[[package]]
+name = "catppuccin-egui"
+version = "5.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "119005543bcd5cc74f76323d40801bb29baf1b062e84f86eb42fb0b2a3fe61e9"
+dependencies = [
+ "egui",
 ]
 
 [[package]]

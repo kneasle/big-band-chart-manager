@@ -12,7 +12,6 @@ pub struct PadMaker {
     entries: Vec<Entry>,
     set_all_part_dropdown_value: String,
 
-    #[serde(default)]
     id_counter: u64,
 }
 
