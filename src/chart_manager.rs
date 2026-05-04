@@ -5,6 +5,8 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+use self::cache::Cache;
+
 /// Data structure providing an abstract access to a big band parts folder.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ChartManager {
@@ -12,14 +14,14 @@ pub struct ChartManager {
     charts_dir: String,
 
     #[serde(skip)]
-    cache: cache::Cache,
+    cache: Cache,
 }
 
 impl Default for ChartManager {
     fn default() -> Self {
         let chart_dir = "/mnt/d/Music/Swing band/Current Music Library/";
         Self {
-            cache: cache::Cache::new(chart_dir),
+            cache: Cache::new(chart_dir),
             charts_dir: chart_dir.to_owned(),
         }
     }
@@ -42,15 +44,21 @@ impl ChartManager {
     }
 
     pub fn refresh_cache(&mut self) {
-        self.cache = cache::Cache::new(&self.charts_dir);
+        self.cache = Cache::new(&self.charts_dir);
     }
 
     pub fn get_piece_list(&mut self) -> &HashSet<String> {
         return &self.cache.piece_list;
     }
 
-    pub fn has_piece(&mut self, piece: &str) -> bool {
-        self.get_piece_list().contains(piece)
+    pub fn get_nearest_piece_name<'s>(&'s self, uncorrected_name: &'s str) -> &'s str {
+        // TODO: Allow a little bit of edit distance to correct for typos
+
+        let tag = Cache::piece_name_to_tag(uncorrected_name);
+        match self.cache.pieces_by_tag.get(&tag) {
+            Some(corrected_name) => corrected_name,
+            None => uncorrected_name,
+        }
     }
 
     pub fn does_piece_have_arrangements(&mut self, piece: &str) -> bool {
@@ -58,11 +66,6 @@ impl ChartManager {
             .pieces_with_arrangements
             .get(piece)
             .is_some_and(|arrs| arrs.len() > 1)
-    }
-
-    pub fn has_part(&mut self, piece: &str, part: &str) -> bool {
-        self.get_part_list(piece)
-            .is_some_and(|parts| parts.contains_key(part))
     }
 
     pub fn get_path_of_part(&mut self, piece: &str, part: &str) -> Option<PathBuf> {
@@ -122,13 +125,14 @@ mod cache {
     };
 
     #[derive(Debug, Default)]
-    pub struct Cache {
+    pub(super) struct Cache {
         pub piece_list: HashSet<String>,
         pub pieces_with_arrangements: HashMap<String, Vec<String>>,
 
-        /// Maps a punctuation-free, lowercase version of each piece's name to a list of every
-        /// arrangement of this piece.
-        // tags_to_piece: HashMap<String, String>,
+        /// Maps a punctuation-free, lowercase version of each piece's name to the name of the
+        /// piece without the arranger name.  This is used to perform fuzzy lookup of piece names
+        /// from a setlist document.
+        pub pieces_by_tag: HashMap<String, String>,
 
         /// Map of piece names to a map of part names to the path of that PDF.  This is calculated
         /// lazily - if a piece exists in piece_list but does not have an entry here, it means that
@@ -150,9 +154,17 @@ mod cache {
                     .push(piece.to_owned());
             }
 
+            // Build map of pieces by tag
+            let mut pieces_by_tag = HashMap::<String, String>::new();
+            for piece_name_without_arranger in pieces_with_arrangements.keys() {
+                let tag = Self::piece_name_to_tag(piece_name_without_arranger);
+                pieces_by_tag.insert(tag, piece_name_without_arranger.to_owned());
+            }
+
             Self {
                 piece_list,
                 pieces_with_arrangements,
+                pieces_by_tag,
 
                 parts_per_piece: HashMap::new(),
             }
@@ -241,12 +253,21 @@ mod cache {
 
         /// Normalize a piece name into a punctuation-free, lowercase version of that name with no
         /// arranger.
-        fn piece_name_to_tag(name: &str) -> String {
-            let piece_without_arranger = name.split(" (arr ").next().unwrap();
+        pub fn piece_name_to_tag(name: &str) -> String {
+            let name_without_arranger = name.split(" (arr ").next().unwrap();
 
-            // TODO: Do this properly
-
-            piece_without_arranger.to_lowercase()
+            let mut tag = String::new();
+            for c in name_without_arranger.chars() {
+                if c == '&' {
+                    tag.push_str("and");
+                } else if c.is_alphanumeric() {
+                    tag.extend(c.to_lowercase());
+                } else if c.is_whitespace() {
+                    tag.push(' '); // Normalise all whitespace to ' '
+                }
+            }
+            tag.replace("opus 1", "opus one")
+                .replace("chattanooga", "chatanooga")
         }
     }
 }

@@ -139,11 +139,14 @@ impl Playlist {
         if line.ends_with(":") {
             return None; // Lines ending in ':' are probably a section e.g. "Encore:"
         }
+        if line.to_lowercase().contains("encore") {
+            return None; // Encore is just a label
+        }
 
         // Remove vocal markings (iterator always has at least one element, so unwrap is safe)
         let line = line.split(" (").next().unwrap().trim();
 
-        println!("{line:?}");
-        Some(line.to_owned())
+        let corrected_name = chart_manager.get_nearest_piece_name(line);
+        Some(corrected_name.to_owned())
     }
 }
