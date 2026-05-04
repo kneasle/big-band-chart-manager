@@ -5,6 +5,7 @@ edition = "2024"
 publish = false
 
 [dependencies]
+anyhow = "1.0.102"
 catppuccin-egui = { version = "5.7.0", default-features = false, features = ["egui32"] }
 docx-rust = "0.1.11"
 eframe = { version = "0.32.1", features = ["persistence"] }

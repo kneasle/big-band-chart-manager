@@ -72,7 +72,7 @@ impl PadMaker {
                         .selected_text(&entry.part)
                         .width(100.0)
                         .show_ui(ui, |ui| {
-                            let parts = chart_manager.get_parts_for_piece(&entry.piece);
+                            let parts = chart_manager.get_part_list_or_default(&entry.piece);
                             crate::utils::show_part_dropdown_gui(ui, &mut entry.part, parts);
                         });
 
@@ -85,26 +85,42 @@ impl PadMaker {
                     }
 
                     // Errors
-                    if !chart_manager.has_piece(&entry.piece) {
-                        ui.colored_label(Color32::RED, "Piece doesn't exist");
-                    } else if !chart_manager.has_part(&entry.piece, &entry.part) {
-                        ui.colored_label(Color32::RED, "Part doesn't exist");
+                    match chart_manager.get_part_list(&entry.piece) {
+                        // No parts found, either because the piece doesn't exist or because it
+                        // has multiple arrangements
+                        None => {
+                            if chart_manager.does_piece_have_arrangements(&entry.piece) {
+                                ui.colored_label(Color32::RED, "Piece has many arrangements");
+                            } else {
+                                ui.colored_label(Color32::RED, "Piece doesn't exist");
+                            }
+                        }
+
+                        // Piece does exist
+                        Some(list) => {
+                            if list.is_empty() {
+                                ui.colored_label(Color32::RED, "Piece is not well formatted");
+                            } else if !list.contains_key(&entry.part) {
+                                ui.colored_label(Color32::RED, "Part doesn't exist");
+                            }
+                        }
                     }
                 });
             },
         );
 
-        // New entry button
-        ui.add_space(5.0);
-        if ui.button("Add Entry").clicked() {
-            let entry = self.new_entry("", self.get_most_common_part().to_owned());
-            self.entries.push(entry);
-        }
+        ui.add_space(10.0);
 
-        // Set all parts
-        ui.add_space(5.0);
         ui.horizontal(|ui| {
-            ui.label("Set all parts to ");
+            // New entry button
+            if ui.button("Add Song").clicked() {
+                let entry = self.new_entry("", self.get_most_common_part().to_owned());
+                self.entries.push(entry);
+            }
+            ui.add_space(30.0);
+
+            // Set all parts
+            ui.label("Set all parts to");
             egui::ComboBox::new("set-all-parts", "")
                 .selected_text(&self.set_all_part_dropdown_value)
                 .width(150.0)
@@ -117,7 +133,6 @@ impl PadMaker {
                     );
                 });
             if ui.button("Set").clicked() {
-                // TODO: Do this more intelligently?
                 for entry in &mut self.entries {
                     entry.part = self.set_all_part_dropdown_value.clone();
                 }
@@ -145,7 +160,9 @@ impl PadMaker {
     fn get_parts_used_in_any_piece(&self, chart_manager: &mut ChartManager) -> HashSet<String> {
         let mut part_list = ChartManager::default_part_list();
         for entry in &self.entries {
-            part_list.extend(chart_manager.get_parts_for_piece(&entry.piece));
+            if let Some(parts) = chart_manager.get_part_list(&entry.piece) {
+                part_list.extend(parts.keys().cloned());
+            }
         }
 
         part_list

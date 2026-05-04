@@ -1,6 +1,13 @@
 use std::{borrow::Cow, path::PathBuf};
 
+use anyhow::anyhow;
+use docx_rust::{
+    DocxFile,
+    document::{BodyContent, Table, TableCellContent, TableRowContent},
+};
 use serde::{Deserialize, Serialize};
+
+use crate::chart_manager::ChartManager;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct PlaylistManager {
@@ -85,12 +92,58 @@ impl Playlist {
     }
 
     // Read a list of pieces from the DOCX file
-    pub fn read_setlist(&self) -> Vec<String> {
-        // TODO: Do this properly
-        vec![
-            "Sing Sing Sing".to_owned(),
-            "The Jazz Police".to_owned(),
-            "A String of Pearls".to_owned(),
-        ]
+    pub fn read_setlist(&self, chart_manager: &mut ChartManager) -> anyhow::Result<Vec<String>> {
+        // Read docx file from disk
+        let docx_file = DocxFile::from_file(&self.path)?;
+        let docx = docx_file.parse()?;
+
+        // Scan to find the relevant table(s)
+        let mut candidate_tables = Vec::<&Table>::new();
+        for element in &docx.document.body.content {
+            if let BodyContent::Table(table) = element {
+                // We're usually looking for two column tables
+                let num_cols = table.grids.columns.len();
+                let num_rows = table.rows.len();
+                if num_cols == 2 && num_rows == 2 {
+                    candidate_tables.push(table);
+                }
+            }
+        }
+
+        // There should be only one candidate table
+        let setlist_table = if candidate_tables.len() == 1 {
+            candidate_tables[0]
+        } else {
+            return Err(anyhow!("No relevant tables found in {:?}.", self.path));
+        };
+
+        // Read the setlist table.  The setlist is in the second row of a 2x2 table
+        let mut setlist = Vec::<String>::new();
+        for cell in &setlist_table.rows[1].cells {
+            if let TableRowContent::TableCell(cell) = cell {
+                for content in &cell.content {
+                    let TableCellContent::Paragraph(paragraph) = content;
+                    setlist.extend(self.read_setlist_line(&paragraph.text(), chart_manager));
+                }
+            }
+        }
+        Ok(setlist)
+    }
+
+    fn read_setlist_line(&self, line: &str, chart_manager: &mut ChartManager) -> Option<String> {
+        // Remove lines which obviously aren't chart names
+        let line = line.trim();
+        if line == "" {
+            return None; // Empty lines can't correspond to a song
+        }
+        if line.ends_with(":") {
+            return None; // Lines ending in ':' are probably a section e.g. "Encore:"
+        }
+
+        // Remove vocal markings (iterator always has at least one element, so unwrap is safe)
+        let line = line.split(" (").next().unwrap().trim();
+
+        println!("{line:?}");
+        Some(line.to_owned())
     }
 }

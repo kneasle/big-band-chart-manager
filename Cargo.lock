@@ -442,6 +442,7 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "big_band_chart_manager"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "catppuccin-egui",
  "docx-rust",
  "eframe",

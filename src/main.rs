@@ -23,9 +23,6 @@ fn main() -> eframe::Result {
         "Big Band Chart-o-matic",
         options,
         Box::new(|cc| {
-            // This gives us image support:
-            egui_extras::install_image_loaders(&cc.egui_ctx);
-
             // Theming
             catppuccin_egui::set_theme(&cc.egui_ctx, catppuccin_egui::LATTE);
 
@@ -34,8 +31,18 @@ fn main() -> eframe::Result {
             if let Some(storage) = cc.storage {
                 if let Some(config_str) = storage.get_string(STORAGE_KEY) {
                     app = serde_json::from_str(&config_str).unwrap();
+                    app.chart_manager.refresh_cache();
                 }
             }
+
+            let setlist = app
+                .playlist_manager
+                .get_playlist_by_name("WSM Rugby Club - 15 May 26")
+                .unwrap()
+                .read_setlist(&mut app.chart_manager)
+                .unwrap();
+            dbg!(setlist);
+
             Ok(app)
         }),
     )
@@ -67,90 +74,25 @@ impl eframe::App for BigBandApp {
         ctx.set_zoom_factor(1.5);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            // Configuration
             ui.heading("Configuration");
             ui.add_space(5.0);
-            egui::Grid::new("config-table").show(ui, |ui| {
-                // TODO: Use rfd for this
-                ui.label("Charts folder:");
-                let mut charts_path = self.chart_manager.get_path().to_owned();
-                ui.add(PathPicker::<_, DefaultIconProvider>::new(
-                    &mut charts_path,
-                    &"/mnt/d/Music/Swing band/Current Music Library",
-                ));
-                self.chart_manager.update_path(charts_path);
-                ui.end_row();
+            self.draw_config_section(ui);
 
-                ui.label("Playlists folder:");
-                let mut playlists_path = self.playlist_manager.get_path().to_owned();
-                ui.add(PathPicker::<_, DefaultIconProvider>::new(
-                    &mut playlists_path,
-                    &"/mnt/d/Music/Swing band/Playlists",
-                ));
-                self.playlist_manager.update_path(playlists_path);
-                ui.end_row();
-            });
+            // // Imports
+            // ui.add_space(20.0);
+            // ui.heading("Import New Chart");
+            // ui.add_space(5.0);
+            // if ui.button("TODO: From Combined PDF").clicked() {
+            //     println!("TODO: Implement chart import");
+            // }
+            // if ui.button("TODO: From Folder of PDFs").clicked() {
+            //     println!("TODO: Implement chart import");
+            // }
 
-            // Imports
-            ui.add_space(20.0);
-            ui.heading("Import New Chart");
-            ui.add_space(5.0);
-            if ui.button("TODO: From Combined PDF").clicked() {
-                println!("TODO: Implement chart import");
-            }
-            if ui.button("TODO: From Folder of PDFs").clicked() {
-                println!("TODO: Implement chart import");
-            }
-
-            // Instrument pad making
             ui.add_space(20.0);
             ui.heading("Make Pad");
             ui.add_space(5.0);
-            if ui.button("Open Pad-o-matic").clicked() {
-                self.is_pad_maker_visible = true;
-            }
-            ui.horizontal(|ui| {
-                ui.label("Make pad for playlist:");
-                let playlists = self
-                    .playlist_manager
-                    .get_playlists()
-                    .iter()
-                    .filter_map(|p| p.get_name())
-                    .collect_vec();
-                ui.add(
-                    AutoCompleteTextEdit::new(&mut self.pad_maker_gui_playlist, playlists)
-                        .width(300.0)
-                        .popup_on_focus(true)
-                        .max_suggestions(10),
-                );
-                egui::ComboBox::new("pad-maker-part", "")
-                    .selected_text(&self.pad_maker_gui_part)
-                    .width(100.0)
-                    .show_ui(ui, |ui| {
-                        let parts = ChartManager::default_part_list();
-                        crate::utils::show_part_dropdown_gui(
-                            ui,
-                            &mut self.pad_maker_gui_part,
-                            parts,
-                        );
-                    });
-                match self
-                    .playlist_manager
-                    .get_playlist_by_name(&self.pad_maker_gui_playlist)
-                {
-                    Some(playlist) => {
-                        if ui.button("Go!").clicked() {
-                            let setlist = playlist.read_setlist();
-                            self.pad_maker
-                                .set_setlist(&setlist, &self.pad_maker_gui_part);
-                            self.is_pad_maker_visible = true;
-                        }
-                    }
-                    None => {
-                        ui.colored_label(Color32::RED, "Playlist doesn't exist");
-                    }
-                }
-            });
+            self.draw_pad_making_section(ui);
         });
 
         if self.is_pad_maker_visible {
@@ -160,5 +102,82 @@ impl eframe::App for BigBandApp {
                 .default_size(Vec2::new(400.0, 300.0))
                 .show(ctx, |ui| self.pad_maker.show(ui, &mut self.chart_manager));
         }
+    }
+}
+
+impl BigBandApp {
+    fn draw_config_section(&mut self, ui: &mut egui::Ui) {
+        egui::Grid::new("config-table").show(ui, |ui| {
+            // TODO: Use rfd for this
+            ui.label("Charts folder:");
+            let mut charts_path = self.chart_manager.get_path().to_owned();
+            ui.add(PathPicker::<_, DefaultIconProvider>::new(
+                &mut charts_path,
+                &"/mnt/d/Music/Swing band/Current Music Library",
+            ));
+            self.chart_manager.update_path(charts_path);
+            ui.end_row();
+
+            ui.label("Playlists folder:");
+            let mut playlists_path = self.playlist_manager.get_path().to_owned();
+            ui.add(PathPicker::<_, DefaultIconProvider>::new(
+                &mut playlists_path,
+                &"/mnt/d/Music/Swing band/Playlists",
+            ));
+            self.playlist_manager.update_path(playlists_path);
+            ui.end_row();
+        });
+    }
+
+    fn draw_pad_making_section(&mut self, ui: &mut egui::Ui) {
+        if ui.button("Open Pad-o-matic").clicked() {
+            self.is_pad_maker_visible = true;
+        }
+        ui.horizontal(|ui| {
+            ui.label("Make pad for playlist:");
+            let playlists = self
+                .playlist_manager
+                .get_playlists()
+                .iter()
+                .filter_map(|p| p.get_name())
+                .collect_vec();
+            ui.add(
+                AutoCompleteTextEdit::new(&mut self.pad_maker_gui_playlist, playlists)
+                    .width(300.0)
+                    .popup_on_focus(true)
+                    .max_suggestions(10),
+            );
+            egui::ComboBox::new("pad-maker-part", "")
+                .selected_text(&self.pad_maker_gui_part)
+                .width(100.0)
+                .show_ui(ui, |ui| {
+                    let parts = ChartManager::default_part_list();
+                    crate::utils::show_part_dropdown_gui(ui, &mut self.pad_maker_gui_part, parts);
+                });
+            match self
+                .playlist_manager
+                .get_playlist_by_name(&self.pad_maker_gui_playlist)
+            {
+                Some(playlist) => {
+                    if ui.button("Go!").clicked() {
+                        let setlist = playlist.read_setlist(&mut self.chart_manager);
+                        match setlist {
+                            Ok(setlist) => {
+                                self.pad_maker
+                                    .set_setlist(&setlist, &self.pad_maker_gui_part);
+                                self.is_pad_maker_visible = true;
+                            }
+                            Err(e) => {
+                                // TODO: Better error handling
+                                println!("Error reading docx: {}", e);
+                            }
+                        }
+                    }
+                }
+                None => {
+                    ui.colored_label(Color32::RED, "Playlist doesn't exist");
+                }
+            }
+        });
     }
 }
