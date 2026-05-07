@@ -17,14 +17,14 @@ pub struct PlaylistManager {
     cache: Cache,
 }
 
-#[derive(Debug)]
-pub struct Playlist {
-    pub path: PathBuf,
-}
-
 #[derive(Debug, Default)]
 struct Cache {
     playlists: Option<Vec<Playlist>>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Playlist {
+    pub path: PathBuf,
 }
 
 impl Default for PlaylistManager {

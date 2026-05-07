@@ -35,14 +35,6 @@ fn main() -> eframe::Result {
                 }
             }
 
-            let setlist = app
-                .playlist_manager
-                .get_playlist_by_name("WSM Rugby Club - 15 May 26")
-                .unwrap()
-                .read_setlist(&mut app.chart_manager)
-                .unwrap();
-            dbg!(setlist);
-
             Ok(app)
         }),
     )
@@ -74,10 +66,6 @@ impl eframe::App for BigBandApp {
         ctx.set_zoom_factor(1.5);
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("Configuration");
-            ui.add_space(5.0);
-            self.draw_config_section(ui);
-
             // // Imports
             // ui.add_space(20.0);
             // ui.heading("Import New Chart");
@@ -89,10 +77,14 @@ impl eframe::App for BigBandApp {
             //     println!("TODO: Implement chart import");
             // }
 
-            ui.add_space(20.0);
             ui.heading("Make Pad");
             ui.add_space(5.0);
             self.draw_pad_making_section(ui);
+
+            ui.add_space(20.0);
+            ui.heading("Configuration");
+            ui.add_space(5.0);
+            self.draw_config_section(ui);
         });
 
         if self.is_pad_maker_visible {

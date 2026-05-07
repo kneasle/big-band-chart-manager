@@ -52,13 +52,16 @@ impl ChartManager {
     }
 
     pub fn get_nearest_piece_name<'s>(&'s self, uncorrected_name: &'s str) -> &'s str {
+        // Return an exact match if one exists
+        let tag = Cache::piece_name_to_tag(uncorrected_name);
+        if let Some(corrected_name) = self.cache.pieces_by_tag.get(&tag) {
+            return corrected_name;
+        }
+
         // TODO: Allow a little bit of edit distance to correct for typos
 
-        let tag = Cache::piece_name_to_tag(uncorrected_name);
-        match self.cache.pieces_by_tag.get(&tag) {
-            Some(corrected_name) => corrected_name,
-            None => uncorrected_name,
-        }
+        // Otherwise, keep the existing name and let the user see the error and correct it
+        uncorrected_name
     }
 
     pub fn does_piece_have_arrangements(&mut self, piece: &str) -> bool {
